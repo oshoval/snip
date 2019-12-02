@@ -1,17 +1,11 @@
 # Snip
 
 ```
-# snip snip test
-dnf config-manager \
-    --add-repo \
-    https://download.docker.com/linux/fedora/docker-ce.repo
-dnf install -y docker-ce docker-ce-cli containerd.io
-sudo groupadd docker
-sudo usermod -aG docker $(whoami)
-sudo service docker start
+# snip main test
+echo first
 ```
 
 ```
-# snip snip hello
-echo hello world
+# snip main hello
+echo "hello world"
 ```
