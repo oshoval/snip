@@ -21,7 +21,7 @@ echo first
 echo "hello world"
 ```
 
-## Some usefull snippets
+## Some useful snippets
 
 ```
 # snip main bye
