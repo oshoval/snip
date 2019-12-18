@@ -46,7 +46,7 @@ code_count = int(stdout2)
 for x in range(1, code_count + 1):
     #print(x)
     p4 = subprocess.Popen(
-        ["xmlstarlet", "sel", "-t", "-v", "//code[" + str(x) + "]"],
+        ["xmlstarlet", "sel", "-t", "-v", "(//code)[" + str(x) + "]"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
     )
