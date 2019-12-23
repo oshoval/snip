@@ -7,10 +7,10 @@ import os
 import stat
 
 
-def execute_code(lines, indecies_tuple):
+def execute_code(lines, indices_tuple, interpreters, type_arg):
     with open("temp.sh", 'w') as out_file:
-        out_file.write("#!/bin/bash\n")
-        for i in range(indecies_tuple[0], indecies_tuple[1]):
+        out_file.write(interpreters[type_arg])
+        for i in range(indices_tuple[0], indices_tuple[1]):
             out_file.write(lines[i])
             out_file.write('\n')
         out_file.write('\n')
@@ -18,18 +18,23 @@ def execute_code(lines, indecies_tuple):
     subprocess.run(["./temp.sh"])
     os.remove("temp.sh")
 
+
 def main():
     # Initialize config parser for handing the .ini file
     config = configparser.ConfigParser()
     config.sections()
-    # do we want to hardcode this?
     config.read("inventory.ini")
 
     # Initialize program's arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("group", help="group help")
     parser.add_argument("snippet", help="snippet help")
+    parser.add_argument("-t", "--type", help="interpreter", type=str, default='bash')
     args = parser.parse_args()
+
+    interpreters = {'bash': "#!/bin/bash\n",
+                    'python3': "#!/usr/bin/env python3\n",
+                    'python2': "#!/usr/bin/env python2\n"}
 
     # Determine how to fetch MD
     try:
@@ -45,7 +50,7 @@ def main():
             command = ["curl", "-s", url]
     except KeyError:
         print("Cant find group in inventory.ini")
-        sys.exit()
+        sys.exit(1)
 
     FNULL = open(os.devnull, 'w')
 
@@ -58,42 +63,41 @@ def main():
 
     # Extract the index ranges of each snippet
     for counter, line in enumerate(stdout_split):
-        if line != b'':
-            if line == b'```' and not in_snippet:
+        stdout_split[counter] = line.decode("utf-8")
+        line = stdout_split[counter]
+        if line != '':
+            if line == '```' and not in_snippet:
                 in_snippet = True
                 start_of_snippet = counter + 1
-            elif line == b'```':
+            elif line == '```':
                 in_snippet = False
                 end_of_snippet = counter
                 snippet_list.append((start_of_snippet, end_of_snippet))
-            else:
-                stdout_split[counter] = stdout_split[counter].decode("utf-8")
-                continue
 
     # List snippets
     if args.snippet == 'ls':
         for counter, snippet in enumerate(snippet_list):
             snippet_lines = stdout_split[snippet[0]: snippet[1]]
-            print (str(counter) + ':')
+            print (str(counter + 1) + ':')
             for line in snippet_lines:
                 print (line)
             print ()
 
     # Execute snippet by serial number
     elif args.snippet.isnumeric():
-        if int(args.snippet) < 0 or int(args.snippet) >= len(snippet_list):
+        if int(args.snippet) < 1 or int(args.snippet) > len(snippet_list):
             print ("Outside of snippet range")
             sys.exit(1)
-        execute_code(stdout_split, snippet_list[int(args.snippet)])
+        execute_code(stdout_split, snippet_list[int(args.snippet) - 1], interpreters, args.type)
 
     # Execute snippet by keyword
     else:
-        for counter, snippet_indecies in enumerate(snippet_list):
-            start, end  = snippet_indecies[0], snippet_indecies[1]
+        for counter, snippet_indices in enumerate(snippet_list):
+            start, end  = snippet_indices[0], snippet_indices[1]
             first_line = stdout_split[start]
             line_split = first_line.split(' ')
             if args.snippet == line_split[3]:
-                execute_code(stdout_split, snippet_indecies)
+                execute_code(stdout_split, snippet_indices, interpreters, args.type)
                 break
 
 
