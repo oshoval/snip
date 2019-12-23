@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import subprocess
 import argparse
 import configparser
@@ -7,103 +6,96 @@ import sys
 import os
 import stat
 
-# Initialize config parser for handing the .ini file
-config = configparser.ConfigParser()
-config.sections()
-# do we want to hardcode this?
-config.read("inventory.ini")
 
-# Initialize program's arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("group", help="group help")
-parser.add_argument("snippet", help="snippet help")
-args = parser.parse_args()
+def execute_code(lines, indecies_tuple):
+    with open("temp.sh", 'w') as out_file:
+        out_file.write("#!/bin/bash\n")
+        for i in range(indecies_tuple[0], indecies_tuple[1]):
+            out_file.write(lines[i])
+            out_file.write('\n')
+        out_file.write('\n')
+    os.chmod("temp.sh", stat.S_IRWXU)
+    subprocess.run(["./temp.sh"])
+    os.remove("temp.sh")
 
-# Determine how to fetch MD
-try:
-    if "local" == args.group:
-        command = ["cat", "README.md"]
-    elif args.group.startswith('/'):
-        command = ["cat", args.group]
-    elif "http" in args.group:
-        url = args.group
-        command = ["curl", "-s", url]
-    else:
-        url = config["Mapping"][args.group]
-        command = ["curl", "-s", url]
-except KeyError:
-    print("Cant find group in inventory.ini")
-    sys.exit()
+def main():
+    # Initialize config parser for handing the .ini file
+    config = configparser.ConfigParser()
+    config.sections()
+    # do we want to hardcode this?
+    config.read("inventory.ini")
 
-FNULL = open(os.devnull, 'w')
+    # Initialize program's arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("group", help="group help")
+    parser.add_argument("snippet", help="snippet help")
+    args = parser.parse_args()
 
-# Fetch the MD, convert to XML
-p1 = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=FNULL)
-p2 = subprocess.Popen(["pandoc", "-f", "markdown", "-t", "html"], stdin=p1.stdout, stdout=subprocess.PIPE, stderr=FNULL)
-p3 = subprocess.Popen(["xmlstarlet", "fo", "--html", "--dropdtd"], stdin=p2.stdout, stdout=subprocess.PIPE, stderr=FNULL)
-stdout, stderr = p3.communicate()
+    # Determine how to fetch MD
+    try:
+        if "local" == args.group:
+            command = ["cat", "README.md"]
+        elif args.group.startswith('/'):
+            command = ["cat", args.group]
+        elif "http" in args.group:
+            url = args.group
+            command = ["curl", "-s", url]
+        else:
+            url = config["Mapping"][args.group]
+            command = ["curl", "-s", url]
+    except KeyError:
+        print("Cant find group in inventory.ini")
+        sys.exit()
 
-# Count the number of <code> ... </code> blocks
-p4 = subprocess.Popen(
-    ["xmlstarlet", "sel", "-t", "-v", "count(//code)"],
-    stdin=subprocess.PIPE,
-    stdout=subprocess.PIPE,
-)
-stdout2, stderr = p4.communicate(stdout)
+    FNULL = open(os.devnull, 'w')
 
-# Looping on snippets
-code_count = int(stdout2)
-for x in range(1, code_count + 1):
-    p4 = subprocess.Popen(
-        ["xmlstarlet", "sel", "-t", "-v", "(//code)[" + str(x) + "]"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-    )
-    stdout2, stderr = p4.communicate(stdout)
-    # Generate & print list of available snippets in the current MD file
+    # Parse MD file
+    p1 = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=FNULL)
+    p1_stdout, p1_stderr = p1.communicate()
+    stdout_split = p1_stdout.split(b'\n')
+    in_snippet = False
+    snippet_list = []
+
+    # Extract the index ranges of each snippet
+    for counter, line in enumerate(stdout_split):
+        if line != b'':
+            if line == b'```' and not in_snippet:
+                in_snippet = True
+                start_of_snippet = counter + 1
+            elif line == b'```':
+                in_snippet = False
+                end_of_snippet = counter
+                snippet_list.append((start_of_snippet, end_of_snippet))
+            else:
+                stdout_split[counter] = stdout_split[counter].decode("utf-8")
+                continue
+
+    # List snippets
     if args.snippet == 'ls':
-        print(str(x) + ':')
-        stdout2 = stdout2.decode("utf-8")
-        print(stdout2 + '\n')
+        for counter, snippet in enumerate(snippet_list):
+            snippet_lines = stdout_split[snippet[0]: snippet[1]]
+            print (str(counter) + ':')
+            for line in snippet_lines:
+                print (line)
+            print ()
 
-    # Execute snippet by its serial number
+    # Execute snippet by serial number
     elif args.snippet.isnumeric():
-        if str(x) == args.snippet:
-            stdout2 = stdout2.decode("utf-8")
-            # Injecting snippet to a temporary script file
-            with open("temp.sh", 'w') as out_file:
-                out_file.write("#!/bin/bash\n")
-                out_file.write(stdout2)
-                out_file.write('\n')
-            os.chmod("temp.sh", stat.S_IRWXU)
-            subprocess.run(["cat", "./temp.sh"])
-            print("-------")
-            subprocess.run(["./temp.sh"])
-            # should delete the file after execution
+        if int(args.snippet) < 0 or int(args.snippet) >= len(snippet_list):
+            print ("Outside of snippet range")
+            sys.exit(1)
+        execute_code(stdout_split, snippet_list[int(args.snippet)])
 
     # Execute snippet by keyword
     else:
-        # First issue - this else (and probably the 'if' and 'elif' above) is executing for every snippet - even though we just wanted a specific one
-        # Second issue - x is not a meaningful name for a variable
-        x = stdout2.split(b'\n')
-        pos = x[0].find(b'snip')  # locates the starting index of 'snip'
-        line = x[0][pos:].split()  # split the line, starting from 'snip'
-        if len(line) == 3: # line length should always be 3???? i.e. snip main hello
-            line[2] = line[2].decode("utf-8")
-            # Execute the right snippet in accordance to the given keyword
-            if str(line[2]) == args.snippet:
-                stdout2 = stdout2.decode("utf-8")
-                # Repeating code!
-                with open("temp.sh", 'w') as out_file:
-                    out_file.write("#!/bin/bash\n")
-                    out_file.write(stdout2)
-                    out_file.write('\n')
-                os.chmod("temp.sh", stat.S_IRWXU)
-                subprocess.run(["./temp.sh"])
+        for counter, snippet_indecies in enumerate(snippet_list):
+            start, end  = snippet_indecies[0], snippet_indecies[1]
+            first_line = stdout_split[start]
+            line_split = first_line.split(' ')
+            if args.snippet == line_split[3]:
+                execute_code(stdout_split, snippet_indecies)
+                break
 
 
-# Suggestions:
-#1. Refactoring the code
-#2. Arrange in functions
-#3. Add some extra functionality - ability to run code from different languages
-#4. Add comments
+if __name__ == "__main__":
+    main()
