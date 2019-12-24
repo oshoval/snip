@@ -36,6 +36,10 @@ def main():
                     'python3': "#!/usr/bin/env python3\n",
                     'python2': "#!/usr/bin/env python2\n"}
 
+    if args.type not in interpreters:
+        print("Error, interpreter is not recognized")
+        sys.exit(1)
+
     # Determine how to fetch MD
     try:
         if "local" == args.group:
