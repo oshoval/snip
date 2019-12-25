@@ -70,10 +70,10 @@ def main():
         stdout_split[counter] = line.decode("utf-8")
         line = stdout_split[counter]
         if line != '':
-            if line == '```' and not in_snippet:
+            if line.startswith('```') and not in_snippet:
                 in_snippet = True
                 start_of_snippet = counter + 1
-            elif line == '```':
+            elif line.startswith('```'):
                 in_snippet = False
                 end_of_snippet = counter
                 snippet_list.append((start_of_snippet, end_of_snippet))
