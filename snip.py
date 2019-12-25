@@ -7,12 +7,7 @@ import os
 import stat
 
 
-def execute_code(lines, indices_tuple, interpreters, type_arg, type_dry):
-    if type_dry:
-        for i in range(indices_tuple[0] + 1, indices_tuple[1]):
-            print(lines[i])
-        return
-
+def execute_code(lines, indices_tuple, interpreters, type_arg, type_dry, modify):
     with open("temp.sh", 'w') as out_file:
         out_file.write(interpreters[type_arg])
         for i in range(indices_tuple[0], indices_tuple[1]):
@@ -20,7 +15,17 @@ def execute_code(lines, indices_tuple, interpreters, type_arg, type_dry):
             out_file.write('\n')
         out_file.write('\n')
     os.chmod("temp.sh", stat.S_IRWXU)
-    subprocess.run(["./temp.sh"])
+    if modify:
+        editor = os.getenv('EDITOR', 'vi')
+        subprocess.call('%s %s' % (editor, "temp.sh"), shell=True)
+    if type_dry:
+        with open("temp.sh", 'r') as temp_file:
+            content = temp_file.readlines()
+            for line in content:
+                line = line.rstrip('\n')
+                print (line)
+    else:
+        subprocess.run(["./temp.sh"])
     os.remove("temp.sh")
 
 
@@ -36,6 +41,7 @@ def main():
     parser.add_argument("snippet", help="snippet help")
     parser.add_argument("-t", "--type", help="interpreter", type=str, default='bash')
     parser.add_argument("-d", "--dry", action='store_true')
+    parser.add_argument("-m", "--modify", action='store_true')
     args = parser.parse_args()
 
     interpreters = {'bash': "#!/bin/bash\n",
@@ -110,7 +116,7 @@ def main():
                     snippet_to_run = snippet_indices
                     break
 
-        execute_code(stdout_split, snippet_to_run, interpreters, args.type, args.dry)
+        execute_code(stdout_split, snippet_to_run, interpreters, args.type, args.dry, args.modify)
 
 
 if __name__ == "__main__":
