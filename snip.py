@@ -7,7 +7,7 @@ import os
 import stat
 
 
-def execute_code(lines, indices_tuple, interpreters, type_arg):
+def execute_code(lines, indices_tuple, interpreters, type_arg, type_dry, modify):
     with open("temp.sh", 'w') as out_file:
         out_file.write(interpreters[type_arg])
         for i in range(indices_tuple[0], indices_tuple[1]):
@@ -15,7 +15,17 @@ def execute_code(lines, indices_tuple, interpreters, type_arg):
             out_file.write('\n')
         out_file.write('\n')
     os.chmod("temp.sh", stat.S_IRWXU)
-    subprocess.run(["./temp.sh"])
+    if modify:
+        editor = os.getenv('EDITOR', 'vi')
+        subprocess.call('%s %s' % (editor, "temp.sh"), shell=True)
+    if type_dry:
+        with open("temp.sh", 'r') as temp_file:
+            content = temp_file.readlines()
+            for line in content:
+                line = line.rstrip('\n')
+                print (line)
+    else:
+        subprocess.run(["./temp.sh"])
     os.remove("temp.sh")
 
 
@@ -30,6 +40,8 @@ def main():
     parser.add_argument("group", help="group help")
     parser.add_argument("snippet", help="snippet help")
     parser.add_argument("-t", "--type", help="interpreter", type=str, default='bash')
+    parser.add_argument("-d", "--dry", action='store_true')
+    parser.add_argument("-m", "--modify", action='store_true')
     args = parser.parse_args()
 
     interpreters = {'bash': "#!/bin/bash\n",
@@ -87,22 +99,24 @@ def main():
                 print (line)
             print ()
 
-    # Execute snippet by serial number
-    elif args.snippet.isnumeric():
-        if int(args.snippet) < 1 or int(args.snippet) > len(snippet_list):
-            print ("Outside of snippet range")
-            sys.exit(1)
-        execute_code(stdout_split, snippet_list[int(args.snippet) - 1], interpreters, args.type)
-
-    # Execute snippet by keyword
+    # Execute snippet
     else:
-        for counter, snippet_indices in enumerate(snippet_list):
-            start, end  = snippet_indices[0], snippet_indices[1]
-            first_line = stdout_split[start]
-            line_split = first_line.split(' ')
-            if args.snippet == line_split[3]:
-                execute_code(stdout_split, snippet_indices, interpreters, args.type)
-                break
+        if args.snippet.isnumeric():
+            if int(args.snippet) < 1 or int(args.snippet) > len(snippet_list):
+                print ("Outside of snippets range")
+                sys.exit(1)
+            snippet_to_run = snippet_list[int(args.snippet) - 1]
+        else:
+            for counter, snippet_indices in enumerate(snippet_list):
+                start, end = snippet_indices[0], snippet_indices[1]
+                first_line = stdout_split[start]
+                line_split = first_line.split(' ')
+                if args.snippet == line_split[3]:
+                    execute_code(stdout_split, snippet_indices, interpreters, args.type, args.dry)
+                    snippet_to_run = snippet_indices
+                    break
+
+        execute_code(stdout_split, snippet_to_run, interpreters, args.type, args.dry, args.modify)
 
 
 if __name__ == "__main__":
