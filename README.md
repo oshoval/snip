@@ -32,7 +32,9 @@ ls: show snippets on screen with their enumeration
 
 ### Options supported:
 --dry-run: only prints to screen without executing it.
+
 -m: opens vi editor, after closing saved text is executed
+
 -d: show every line executed
 
 ### Using url (in raw format)
