@@ -30,10 +30,10 @@ general format:
 ls: show snippets on screen with their enumeration
 1,2,...: executes the enumerated snip #
 
-###Options supported: 
---dry-run: only prints to screen without executing it.
+###Options supported:
 -m: opens vi editor, after closing saved text is executed
 -d: show every line executed
+--dry-run: only prints to screen without executing it.
 
 ### Using url (in raw format)
 
