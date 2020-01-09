@@ -10,7 +10,7 @@ echo first
 
 ```
 # snip main hello
-echo "hello world"
++ echo "hello world"
 ```
 
 ## Some useful snippets
