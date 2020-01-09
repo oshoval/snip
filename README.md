@@ -1,4 +1,4 @@
-This script will install the latest accepted snip release. \
++ This script will install the latest accepted snip release. \
 Snip purpose is to allow a quick method to integrate between markdown snippets and cli.
 
 ## Snippets for sanity check
@@ -10,7 +10,7 @@ echo first
 
 ```
 # snip main hello
-+ echo "hello world"
+echo "hello world"
 ```
 
 ## Some useful snippets
