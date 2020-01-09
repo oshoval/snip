@@ -19,3 +19,37 @@ echo "hello world"
 # snip main bye
 echo bye
 ```
+
+## Start using Snip tool
+general format:
+```
+./snip.py [<url>|<local-file>|<shortcut>] <cmd> <options>
+```
+
+### Commands supported:
+ls: show snippets on screen with their enumeration
+
+1,2,...: executes the enumerated snip #
+
+### Options supported:
+[--dry / -d]: only prints to screen without executing it.
+
+[-m / --modify]: opens vi editor, after closing saved text is executed
+
+### Using url (in raw format)
+
+```
+./snip.py https://gitlab.cee.redhat.com/redsamurai/snippets/raw/master/modi.md ls
+```
+
+### Using local file
+
+```
+./snip.py <full-path>/modi.md ls
+```
+
+### Using shortcuts defined in inventory.ini
+
+```
+./snip.py main ls
+```
