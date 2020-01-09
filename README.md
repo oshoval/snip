@@ -28,6 +28,7 @@ general format:
 
 ### Commands supported:
 ls: show snippets on screen with their enumeration
+
 1,2,...: executes the enumerated snip #
 
 ### Options supported:
